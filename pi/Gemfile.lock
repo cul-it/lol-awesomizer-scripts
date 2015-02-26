@@ -1,0 +1,16 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    dotenv (1.0.2)
+    ffi (1.9.6)
+    libdevinput (0.0.1)
+    wiringpi (1.1.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  dotenv
+  ffi
+  libdevinput
+  wiringpi
