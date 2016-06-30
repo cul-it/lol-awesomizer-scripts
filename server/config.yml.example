@@ -1,0 +1,11 @@
+  awesomizer:
+    host: localhost
+    user: username
+    pass: password
+    database: db
+
+  voyager:
+    host: hostname
+    user: username
+    pass: password
+

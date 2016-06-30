@@ -1,2 +1,4 @@
 sftp-config.json
 .env
+.remote-sync.json
+config.yml

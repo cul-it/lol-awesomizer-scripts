@@ -1,13 +1,12 @@
 # Simple Ruby web server (using Sinatra) to handle requests from the
 # Pi and from the front-end website
 
-
-require 'dotenv'
-Dotenv.load
+require 'yaml'
+$config = YAML.load_file('config.yml')
 
 require 'sinatra'
 require 'json'
-require 'mysql'
+require 'mysql2'
 require 'oci8'
 
 # 'list' returns a list of all items in the database
@@ -24,14 +23,26 @@ get '/inc/:barcode' do |barcode|
   end
 end
 
+# 'inc' increments the votes for a particular item (assuming that
+# the barcode lookup succeeds)
+get '/inc' do
+  barcode = params['barcode']
+  location = params['loc']
+  metadata = _voyager_lookup barcode
+  unless metadata[:bibid].nil?
+    _increment_count metadata, location
+  end
+end
+
 # Retrieve a list of all the items in the database
 def _get_items
-
-  con = Mysql.new(ENV[AWESOMIZER_DB_HOST], ENV[AWESOMIZER_DB_USER], ENV[AWESOMIZER_DB_PASS], ENV[AWESOMIZER_DB])
-  results = con.query('select * from items')
+  con = Mysql2::Client.new(:host     => $config['awesomizer']['host'], 
+                           :username => $config['awesomizer']['user'], 
+                           :password => $config['awesomizer']['pass'], 
+                           :database => $config['awesomizer']['database'])
   output = []
-  results.each_hash do |result|
-    output.push result
+  con.query('select * from items order by timestamp desc limit 80').each do |row|
+    output.push row
   end
 
   output
@@ -39,9 +50,12 @@ def _get_items
 end
 
 # Main Awesomizer database write function
-def _increment_count metadata
+def _increment_count metadata, location = nil
 
-  con = Mysql.new(ENV[AWESOMIZER_DB_HOST], ENV[AWESOMIZER_DB_USER], ENV[AWESOMIZER_DB_PASS], ENV[AWESOMIZER_DB])
+  con = Mysql2::Client.new(:host     => $config['awesomizer']['host'], 
+                           :username => $config['awesomizer']['user'], 
+                           :password => $config['awesomizer']['pass'], 
+                           :database => $config['awesomizer']['database'])  
   # TODO: the 'duplicate key' clause of this query
   # is nice, but it means that the code does a
   # Voyager lookup each and every time a code is
@@ -58,7 +72,7 @@ def _voyager_lookup code
 
   metadata = {}
 
-  voyager = OCI8.new(ENV[VOYAGER_DB_USER], ENV[VOYAGER_DB_PASS], ENV[VOYAGER_DB_HOST])
+  voyager = OCI8.new($config['voyager']['user'], $config['voyager']['pass'], $config['voyager']['host'])
 
   # Do the main Voyager query to get bibid from barcode
   voyager.exec("select bt.* from item_barcode ib, bib_item bi, bib_text bt where ib.item_barcode='#{code}' and ib.item_id=bi.item_id and bi.bib_id = bt.bib_id") do |result|
