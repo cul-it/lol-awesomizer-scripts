@@ -1,16 +1,12 @@
 # Simple Ruby web server (using Sinatra) to handle requests from the
 # Pi and from the front-end website
 
-
-#require 'dotenv'
-#Dotenv.load
-
 require 'yaml'
 $config = YAML.load_file('config.yml')
 
 require 'sinatra'
 require 'json'
-require 'mysql'
+require 'mysql2'
 require 'oci8'
 
 # 'list' returns a list of all items in the database
@@ -40,11 +36,13 @@ end
 
 # Retrieve a list of all the items in the database
 def _get_items
-  con = Mysql.new($config['awesomizer']['host'], $config['awesomizer']['user'], $config['awesomizer']['pass'], $config['awesomizer']['database'])
-  results = con.query('select * from items order by timestamp desc limit 80')
+  con = Mysql2::Client.new(:host     => $config['awesomizer']['host'], 
+                           :username => $config['awesomizer']['user'], 
+                           :password => $config['awesomizer']['pass'], 
+                           :database => $config['awesomizer']['database'])
   output = []
-  results.each_hash do |result|
-    output.push result
+  con.query('select * from items order by timestamp desc limit 80').each do |row|
+    output.push row
   end
 
   output
@@ -54,7 +52,10 @@ end
 # Main Awesomizer database write function
 def _increment_count metadata, location = nil
 
-  con = Mysql.new($config['awesomizer']['host'], $config['awesomizer']['user'],$config['awesomizer']['pass'], $config['awesomizer']['database'])
+  con = Mysql2::Client.new(:host     => $config['awesomizer']['host'], 
+                           :username => $config['awesomizer']['user'], 
+                           :password => $config['awesomizer']['pass'], 
+                           :database => $config['awesomizer']['database'])  
   # TODO: the 'duplicate key' clause of this query
   # is nice, but it means that the code does a
   # Voyager lookup each and every time a code is
